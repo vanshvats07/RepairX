@@ -1,0 +1,3 @@
+import mongoose from "mongoose";
+const DiagnosisSchema = new mongoose.Schema({ repairRequestId: { type: mongoose.Schema.Types.ObjectId, ref: "RepairRequest", required: true, index: true }, technicianId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, component: { type: String, required: true }, diagnosis: { type: String, required: true }, result: { type: String, enum: ["CONFIRMED", "RULED_OUT", "UNCERTAIN", "NEEDS_FURTHER_DIAGNOSTICS"], required: true }, technicianNotes: String, verifiedAt: Date, predictionOutcome: { type: String, enum: ["MATCHED", "DIFFERENT", "INSUFFICIENT_DATA"], default: "INSUFFICIENT_DATA" } }, { timestamps: true });
+export default mongoose.models.Diagnosis || mongoose.model("Diagnosis", DiagnosisSchema);

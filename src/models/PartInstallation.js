@@ -1,0 +1,3 @@
+import mongoose from "mongoose";
+const PartInstallationSchema = new mongoose.Schema({ repairJobId: { type: mongoose.Schema.Types.ObjectId, ref: "RepairJob", required: true, index: true }, deviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Device", required: true }, selectedPartId: { type: mongoose.Schema.Types.ObjectId, ref: "SelectedPart" }, partId: { type: mongoose.Schema.Types.ObjectId, ref: "Part" }, partType: String, supplier: String, cost: { type: Number, min: 0 }, installedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, installedAt: Date, warranty: String, source: String }, { timestamps: true });
+export default mongoose.models.PartInstallation || mongoose.model("PartInstallation", PartInstallationSchema);

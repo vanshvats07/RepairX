@@ -1,0 +1,6 @@
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { connectMongo } from "@/lib/mongodb";
+import User from "@/models/User";
+import { requireAuth } from "@/services/authService";
+export async function POST(request) { try { const user = await requireAuth(); const { currentPassword, newPassword } = await request.json(); if (!newPassword || newPassword.length < 8) return NextResponse.json({ success: false, error: { code: "VALIDATION_ERROR", message: "New password must be at least 8 characters." } }, { status: 400 }); await connectMongo(); const record = await User.findById(user._id).select("+passwordHash"); if (!record || !(await bcrypt.compare(currentPassword || "", record.passwordHash))) return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED", message: "Current password is incorrect." } }, { status: 401 }); record.passwordHash = await bcrypt.hash(newPassword, 12); await record.save(); return NextResponse.json({ success: true, data: { changed: true } }); } catch (error) { return NextResponse.json({ success: false, error: { code: error.code || "DATABASE_ERROR", message: error.message } }, { status: error.code === "UNAUTHORIZED" ? 401 : 500 }); } }

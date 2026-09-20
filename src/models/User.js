@@ -1,0 +1,4 @@
+import mongoose from "mongoose";
+const UserSchema = new mongoose.Schema({ name: { type: String, required: true, trim: true }, email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true }, phone: String, passwordHash: { type: String, required: true, select: false }, role: { type: String, enum: ["CUSTOMER", "TECHNICIAN", "WORKSHOP_OWNER", "ADMIN"], default: "CUSTOMER" }, pilotStatus: { type: String, enum: ["INVITED", "ONBOARDING", "ACTIVE", "SUSPENDED", "REVOKED"], default: "INVITED" }, sessionVersion: { type: Number, default: 0 }, location: String, city: String, state: String, pincode: String, profileImage: String, preferredLanguage: String, lastLoginAt: Date }, { timestamps: true });
+UserSchema.index({ phone: 1 }, { sparse: true });
+export default mongoose.models.User || mongoose.model("User", UserSchema);

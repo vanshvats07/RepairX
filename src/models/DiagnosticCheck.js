@@ -1,0 +1,3 @@
+import mongoose from "mongoose";
+const DiagnosticCheckSchema = new mongoose.Schema({ repairRequestId: { type: mongoose.Schema.Types.ObjectId, ref: "RepairRequest", required: true, index: true }, technicianId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, name: { type: String, required: true }, result: { type: String, enum: ["NOT_CHECKED", "PASS", "FAIL", "NOT_APPLICABLE", "NEEDS_FURTHER_TESTING"], default: "NOT_CHECKED" }, notes: String, checkedAt: Date }, { timestamps: true });
+export default mongoose.models.DiagnosticCheck || mongoose.model("DiagnosticCheck", DiagnosticCheckSchema);

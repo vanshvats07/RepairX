@@ -1,0 +1,10 @@
+import { NextResponse } from "next/server";
+import { connectMongo } from "@/lib/mongodb";
+import Workshop from "@/models/Workshop";
+import WorkshopCapability from "@/models/WorkshopCapability";
+import WorkshopMembership from "@/models/WorkshopMembership";
+import { requireAuth, requireRole } from "@/services/authService";
+
+export async function GET() { try { await connectMongo(); if (!process.env.MONGODB_URI) return NextResponse.json({ data: [], source: "empty" }); const workshops = await Workshop.find().sort({ updatedAt: -1 }).lean(); const capabilities = await WorkshopCapability.find().lean(); return NextResponse.json({ data: workshops.map((workshop) => ({ ...workshop, capabilities: capabilities.filter((item) => String(item.workshopId) === String(workshop._id)) })), source: "mongodb" }); } catch { return NextResponse.json({ data: [], source: "empty", message: "Workshops are temporarily unavailable." }); } }
+
+export async function POST(request) { try { const input = await request.json(); if (!input.name) return NextResponse.json({ error: "Workshop name is required." }, { status: 400 }); const user = requireRole(await requireAuth(), ["WORKSHOP_OWNER", "ADMIN"]); await connectMongo(); if (!process.env.MONGODB_URI) return NextResponse.json({ error: "Database is not configured yet." }, { status: 503 }); const workshop = await Workshop.create(input); if (Array.isArray(input.capabilities)) await WorkshopCapability.insertMany(input.capabilities.map((name) => ({ workshopId: workshop._id, name, confidence: "REPORTED", source: "Workshop submission" }))); if (user.role === "WORKSHOP_OWNER") await WorkshopMembership.findOneAndUpdate({ workshopId: workshop._id, userId: user._id }, { workshopId: workshop._id, userId: user._id, role: "OWNER", status: "ACTIVE" }, { upsert: true, new: true, setDefaultsOnInsert: true }); return NextResponse.json({ data: workshop }, { status: 201 }); } catch (error) { return NextResponse.json({ error: error.message || "Unable to create this workshop right now." }, { status: error.code === "UNAUTHORIZED" ? 401 : error.code === "FORBIDDEN" ? 403 : 500 }); } }

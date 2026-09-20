@@ -1,0 +1,7 @@
+import { NextResponse } from "next/server";
+import { connectMongo } from "@/lib/mongodb";
+import RepairRequest from "@/models/RepairRequest";
+import SelectedPart from "@/models/SelectedPart";
+
+export async function GET(_request, { params }) { try { await connectMongo(); if (!process.env.MONGODB_URI) return NextResponse.json({ data: [] }); return NextResponse.json({ data: await SelectedPart.find({ repairRequestId: params.id }).sort({ createdAt: -1 }).lean() }); } catch { return NextResponse.json({ data: [], message: "Selected parts are temporarily unavailable." }); } }
+export async function POST(request, { params }) { try { const input = await request.json(); if (!input.name || !Number.isFinite(Number(input.price)) || Number(input.price) < 0) return NextResponse.json({ error: "A valid part and non-negative price are required." }, { status: 400 }); await connectMongo(); if (!process.env.MONGODB_URI) return NextResponse.json({ error: "Database is not configured yet." }, { status: 503 }); const repairRequest = await RepairRequest.findById(params.id); if (!repairRequest) return NextResponse.json({ error: "Repair request not found." }, { status: 404 }); const data = await SelectedPart.create({ ...input, price: Number(input.price), repairRequestId: params.id, deviceId: repairRequest.deviceId, workshopId: repairRequest.workshopId }); return NextResponse.json({ data }, { status: 201 }); } catch { return NextResponse.json({ error: "Unable to save the selected part." }, { status: 500 }); } }

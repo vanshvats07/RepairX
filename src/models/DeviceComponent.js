@@ -1,0 +1,3 @@
+import mongoose from "mongoose";
+const DeviceComponentSchema = new mongoose.Schema({ deviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Device", required: true, index: true }, name: { type: String, required: true }, category: String, state: { type: String, enum: ["VERIFIED", "REPORTED", "INFERRED", "UNKNOWN", "NEEDS_REPLACEMENT", "WORKING", "INVESTIGATING"], default: "UNKNOWN" }, confidence: String, lastVerifiedAt: Date, repairCount: { type: Number, default: 0 }, recentIssue: String }, { timestamps: true });
+export default mongoose.models.DeviceComponent || mongoose.model("DeviceComponent", DeviceComponentSchema);

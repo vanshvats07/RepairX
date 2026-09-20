@@ -2,16 +2,30 @@
   "name": "repairx-temp",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:demo": "APP_ENV=development MONGODB_URI=mongodb://127.0.0.1:27017/repairx_demo JWT_SECRET=repairx-local-development-jwt-secret-change-before-production SESSION_SECRET=repairx-local-development-session-secret-change-before-production PILOT_INVITE_ONLY=false npm run dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "node --experimental-loader ./scripts/node-alias-loader.mjs scripts/seed.js",
+    "catalog:import": "node --experimental-loader ./scripts/node-alias-loader.mjs scripts/import-device-catalog.js",
+    "provision:local": "REPAIRX_PROVISION_LOCAL_ACCOUNTS=true node scripts/provision-local-accounts.js",
+    "demo:reset": "APP_ENV=development MONGODB_URI=mongodb://127.0.0.1:27017/repairx_demo JWT_SECRET=repairx-local-development-jwt-secret-change-before-production SESSION_SECRET=repairx-local-development-session-secret-change-before-production DEMO_PASSWORD=RepairX@12345 node --experimental-loader ./scripts/node-alias-loader.mjs scripts/demo-reset.js",
+    "test": "node --test tests/**/*.test.mjs"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "csv-parse": "^7.0.2",
+    "dotenv": "^18.0.1",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.47.0",
+    "mongoose": "^9.10.1",
     "next": "16.3.5",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "serpapi": "^2.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
