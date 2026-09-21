@@ -58,8 +58,10 @@ export const authConfig = {
 
 export const aiConfig = {
   apiKey: getEnvValue("AI_API_KEY", ""),
+  baseUrl: getEnvValue("AI_BASE_URL", "https://api.openai.com/v1"),
   model: getEnvValue("AI_MODEL", "gpt-4o-mini"),
   provider: getEnvValue("AI_PROVIDER", "openai"),
+  localDemo: getEnvValue("LOCAL_DEMO_AI", "false") === "true",
 };
 
 export const serpApiConfig = {

@@ -24,7 +24,7 @@ export async function GET() {
       filter = { workshopId: { $in: memberships.map((membership) => membership.workshopId) } };
     }
 
-    const data = await RepairRequest.find(filter).populate("deviceId", "brand model variant storage location").populate("workshopId", "name city locality").sort({ updatedAt: -1 }).limit(100).lean();
+    const data = await RepairRequest.find(filter).populate("deviceId", "brand model variant storage location").populate("workshopId", "name city locality").populate("investigationId", "assessmentState structuredAssessment possibleCauses recommendedChecks aiConfidence").sort({ updatedAt: -1 }).limit(100).lean();
     return NextResponse.json({ data });
   } catch (error) {
     return NextResponse.json({ error: error.message || "Repair requests are temporarily unavailable." }, { status: error.code === "UNAUTHORIZED" ? 401 : 500 });

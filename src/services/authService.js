@@ -7,6 +7,8 @@ import { connectMongo } from "@/lib/mongodb";
 import User from "@/models/User";
 import WorkshopMembership from "@/models/WorkshopMembership";
 import PilotInvitation from "@/models/PilotInvitation";
+import Workshop from "@/models/Workshop";
+import Technician from "@/models/Technician";
 import { evaluatePilotAccess } from "@/services/pilotAccessService";
 
 const COOKIE = "repairx_session";
@@ -44,6 +46,38 @@ export async function requireActiveWorkshopTechnician(user) {
   }
   return membership;
 }
-export async function createAccount(input) { validateSignup(input); await connectMongo(); if (!process.env.MONGODB_URI) throw new Error("Database is not configured yet."); const existing = await User.findOne({ email: input.email.toLowerCase() }); if (existing) { const error = new Error("An account with this email already exists."); error.code = "CONFLICT"; throw error; } const role = "CUSTOMER"; const isPilotMode = String(process.env.PILOT_MODE || "true").toLowerCase() === "true"; const inviteOnly = String(process.env.PILOT_INVITE_ONLY || "false").toLowerCase() === "true"; const invitation = isPilotMode && inviteOnly ? await PilotInvitation.findOne({ email: String(input.email).trim().toLowerCase(), role, status: "INVITED" }) : null; const access = evaluatePilotAccess({ isPilotMode: isPilotMode && inviteOnly, email: input.email, role, invitations: invitation ? [invitation.toObject ? invitation.toObject() : invitation] : [] }); if (!access.allowed) { const error = new Error(access.reason); error.code = "PILOT_ACCESS_REQUIRED"; throw error; } const user = await User.create({ name: input.name.trim(), email: input.email.toLowerCase(), phone: input.phone, city: input.city, state: input.state, pincode: input.pincode, location: [input.city, input.state].filter(Boolean).join(", "), passwordHash: await bcrypt.hash(input.password, 12), role, pilotStatus: role === "CUSTOMER" ? "ONBOARDING" : "INVITED" }); if (invitation) { invitation.status = "ACCEPTED"; await invitation.save(); } return user; }
+export async function createAccount(input) {
+  validateSignup(input);
+  await connectMongo();
+  if (!process.env.MONGODB_URI) throw new Error("Database is not configured yet.");
+  const requestedRole = String(input.role || "CUSTOMER").toUpperCase();
+  if (requestedRole === "ADMIN") { const error = new Error("Admin accounts are provisioned by a secure development or production administrator flow."); error.code = "FORBIDDEN"; throw error; }
+  if (!["CUSTOMER", "TECHNICIAN", "WORKSHOP_OWNER"].includes(requestedRole)) { const error = new Error("Choose a supported RepairX account type."); error.code = "VALIDATION_ERROR"; throw error; }
+  if (requestedRole === "WORKSHOP_OWNER" && !input.workshopName?.trim()) throw new Error("Workshop name is required.");
+  const email = input.email.toLowerCase();
+  const existing = await User.findOne({ email });
+  if (existing) { const error = new Error("An account with this email already exists."); error.code = "CONFLICT"; throw error; }
+  const isPilotMode = String(process.env.PILOT_MODE || "true").toLowerCase() === "true";
+  const inviteOnly = String(process.env.PILOT_INVITE_ONLY || "false").toLowerCase() === "true";
+  const invitation = isPilotMode && inviteOnly ? await PilotInvitation.findOne({ email, role: requestedRole, status: "INVITED" }) : null;
+  const access = evaluatePilotAccess({ isPilotMode: isPilotMode && inviteOnly, email, role: requestedRole, invitations: invitation ? [invitation.toObject ? invitation.toObject() : invitation] : [] });
+  if (!access.allowed) { const error = new Error(access.reason); error.code = "PILOT_ACCESS_REQUIRED"; throw error; }
+  const pending = requestedRole === "TECHNICIAN";
+  const user = await User.create({ name: input.name.trim(), email, phone: input.phone, city: input.city, state: input.state, pincode: input.pincode, location: [input.city, input.state].filter(Boolean).join(", "), passwordHash: await bcrypt.hash(input.password, 12), role: requestedRole, pilotStatus: pending ? "ONBOARDING" : "ACTIVE" });
+  if (requestedRole === "WORKSHOP_OWNER") {
+    const workshop = await Workshop.create({ name: input.workshopName.trim(), ownerUserId: user._id, phone: input.phone, email, address: input.address, city: input.city, state: input.state, pincode: input.pincode, capabilities: input.specializations || [], supportedDevices: input.supportedDevices || [], availability: "OPEN", verificationStatus: "VERIFICATION_PENDING", verificationSource: "OWNER_SUBMITTED", pilotStatus: "ONBOARDING", isNetworkWorkshop: false });
+    await WorkshopMembership.create({ workshopId: workshop._id, userId: user._id, role: "OWNER", status: "ACTIVE" });
+  }
+  if (requestedRole === "TECHNICIAN") {
+    if (input.workshopId) {
+      const workshop = await Workshop.findById(input.workshopId).lean();
+      if (!workshop) throw new Error("The selected workshop was not found.");
+      await WorkshopMembership.create({ workshopId: workshop._id, userId: user._id, role: "TECHNICIAN", status: "PENDING" });
+      await Technician.create({ workshopId: workshop._id, userId: user._id, name: user.name, phone: user.phone, email: user.email, specializations: input.specializations || [], status: "INACTIVE", inviteStatus: "INVITED" });
+    }
+  }
+  if (invitation) { invitation.status = "ACCEPTED"; await invitation.save(); }
+  return user;
+}
 export async function authenticate(input) { if (!emailPattern.test(input.email || "") || !input.password) throw new Error("Email or password is incorrect."); await connectMongo(); if (!process.env.MONGODB_URI) throw new Error("Database is not configured yet."); const user = await User.findOne({ email: input.email.toLowerCase() }).select("+passwordHash"); if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) throw new Error("Email or password is incorrect."); user.lastLoginAt = new Date(); await user.save(); return user; }
 export { COOKIE };

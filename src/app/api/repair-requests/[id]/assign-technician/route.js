@@ -7,6 +7,7 @@ import WorkshopMembership from "@/models/WorkshopMembership";
 import Notification from "@/models/Notification";
 import AuditEvent from "@/models/AuditEvent";
 import { requireWorkshopOwner } from "@/services/workshopAccessService";
+import RepairStatus from "@/models/RepairStatus";
 
 export async function POST(request, { params }) {
   try {
@@ -19,6 +20,7 @@ export async function POST(request, { params }) {
     if (!["WORKSHOP_ACCEPTED", "AWAITING_TECHNICIAN"].includes(requestRecord.status)) return NextResponse.json({ error: "This repair request is not assignable in its current state." }, { status: 409 });
     const assignment = await TechnicianAssignment.create({ repairRequestId: requestRecord._id, workshopId: requestRecord.workshopId, technicianId: technician._id, assignedBy: user._id, status: "ASSIGNED" });
     requestRecord.technicianId = technician.userId; requestRecord.assignedAt = new Date(); await requestRecord.save();
+    await RepairStatus.create({ repairRequestId: requestRecord._id, status: "TECHNICIAN_ASSIGNED", changedBy: user._id, note: "Technician assigned by the workshop." });
     await AuditEvent.create({ entityType: "RepairRequest", entityId: requestRecord._id, eventType: "TECHNICIAN_ASSIGNED", actorId: user._id, actorRole: user.role, metadata: { assignmentId: assignment._id, technicianId: technician._id } });
     const recipients = [technician.userId, requestRecord.customerId].filter(Boolean); if (recipients.length) await Notification.insertMany(recipients.map((userId) => ({ userId, type: "CASE_ASSIGNED", entityType: "RepairRequest", entityId: requestRecord._id, title: "Technician assigned", message: `A technician has been assigned to case ${requestRecord.caseId}.` })));
     return NextResponse.json({ data: assignment }, { status: 201 });

@@ -12,7 +12,7 @@ export function getSecurityReadinessReport() {
     database: databaseConfig.mongoUri ? "READY" : "NOT_READY",
     backups: "NOT_READY",
     dependencies: {
-      ai: aiConfig.apiKey ? "READY" : "NOT_CONFIGURED",
+      ai: (aiConfig.localDemo && appConfig.isDevelopment) || aiConfig.apiKey ? "READY" : "NOT_CONFIGURED",
       serpApi: serpApiConfig.apiKey ? "READY" : "NOT_CONFIGURED",
     },
     observability: "PARTIAL",
@@ -23,7 +23,7 @@ export function getSecurityReadinessReport() {
   if (!authConfig.jwtSecret) reasons.push("JWT secret is not configured.");
   if (!databaseConfig.mongoUri) reasons.push("MongoDB connection string is missing.");
   if (!paymentConfig.webhookSecret) reasons.push("Payment webhook verification secret is not configured.");
-  if (!aiConfig.apiKey) reasons.push("AI provider is not configured; LLM-based investigation remains a controlled pilot dependency.");
+  if (!aiConfig.apiKey && !(aiConfig.localDemo && appConfig.isDevelopment)) reasons.push("AI provider is not configured; set AI_PROVIDER and AI_API_KEY or enable LOCAL_DEMO_AI only in development.");
   if (!serpApiConfig.apiKey) reasons.push("SerpAPI integration is not configured; external search remains unavailable.");
   if (!process.env.EMAIL_PROVIDER && !process.env.SMS_PROVIDER && !process.env.STORAGE_PROVIDER) reasons.push("Optional production providers are not configured; the deployment remains a controlled pilot.");
   if (!process.env.BACKUP_CONFIGURED) reasons.push("Backup readiness is not confirmed for this environment.");

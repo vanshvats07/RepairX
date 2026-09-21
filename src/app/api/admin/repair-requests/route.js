@@ -7,7 +7,7 @@ export async function GET() {
   try {
     requireRole(await requireAuth(), ["ADMIN"]);
     await connectMongo();
-    const requests = await RepairRequest.find({}).sort({ updatedAt: -1 }).limit(50).lean();
+    const requests = await RepairRequest.find({}).populate("deviceId", "brand model variant").populate("customerId", "name email").populate("workshopId", "name city").sort({ updatedAt: -1 }).limit(50).lean();
     return NextResponse.json({ data: requests });
   } catch (error) {
     return NextResponse.json({ error: error.message || "Repair requests could not be loaded." }, { status: error.code === "FORBIDDEN" ? 403 : 401 });

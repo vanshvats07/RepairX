@@ -9,6 +9,9 @@ import RepairJob from "@/models/RepairJob";
 import RepairRequest from "@/models/RepairRequest";
 import Workshop from "@/models/Workshop";
 import Quote from "@/models/Quote";
+import User from "@/models/User";
+import Technician from "@/models/Technician";
+import Investigation from "@/models/Investigation";
 
 export function getOperationalThresholds() {
   return {
@@ -52,10 +55,11 @@ export async function getAdminOverview() {
       },
       recentActivity: [],
       health: { searchStatus: "UNAVAILABLE", dbStatus: "UNAVAILABLE" },
+      metrics: { totalUsers: 0, totalWorkshops: 0, activeTechnicians: 0, openRepairCases: 0, completedRepairs: 0, aiAssessments: 0 },
     };
   }
 
-  const [workshopVerification, repairRequests, activeRepairs, disputes, alerts, dataQualityIssues, recentActivity] = await Promise.all([
+  const [workshopVerification, repairRequests, activeRepairs, disputes, alerts, dataQualityIssues, recentActivity, totalUsers, totalWorkshops, activeTechnicians, completedRepairs, aiAssessments] = await Promise.all([
     Workshop.countDocuments({ verificationStatus: { $in: ["DISCOVERED", "UNDER_REVIEW", "CLAIM_REQUESTED"] } }),
     RepairRequest.countDocuments({ status: { $nin: ["COMPLETED", "DELIVERED", "CANCELLED"] } }),
     RepairJob.countDocuments({ status: { $nin: ["COMPLETED", "DELIVERED", "CANCELLED"] } }),
@@ -63,6 +67,11 @@ export async function getAdminOverview() {
     OperationalAlert.countDocuments({ status: "OPEN" }),
     DataQualityIssue.countDocuments({ status: { $in: ["OPEN", "DISMISSED"] } }),
     AuditEvent.find({}).sort({ createdAt: -1 }).limit(8).lean(),
+    User.countDocuments({}),
+    Workshop.countDocuments({}),
+    Technician.countDocuments({ status: "ACTIVE" }),
+    RepairRequest.countDocuments({ status: { $in: ["COMPLETED", "DELIVERED"] } }),
+    Investigation.countDocuments({}),
   ]);
 
   return {
@@ -85,6 +94,7 @@ export async function getAdminOverview() {
       searchStatus: process.env.SERPAPI_API_KEY ? "AVAILABLE" : "UNAVAILABLE",
       dbStatus: "AVAILABLE",
     },
+    metrics: { totalUsers, totalWorkshops, activeTechnicians, openRepairCases: repairRequests, completedRepairs, aiAssessments },
   };
 }
 

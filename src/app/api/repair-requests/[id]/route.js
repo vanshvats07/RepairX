@@ -4,6 +4,7 @@ import RepairRequest from "@/models/RepairRequest";
 import DiagnosticCheck from "@/models/DiagnosticCheck";
 import Diagnosis from "@/models/Diagnosis";
 import Quote from "@/models/Quote";
+import Evidence from "@/models/Evidence";
 import WorkshopMembership from "@/models/WorkshopMembership";
 import { requireAuth } from "@/services/authService";
 import { requireRole } from "@/services/authService";
@@ -26,18 +27,20 @@ export async function GET(_request, { params }) {
       if (user.role === "ADMIN") {
         const adminRequest = await RepairRequest.findById(id).populate("deviceId investigationId workshopId").lean();
         if (!adminRequest) return NextResponse.json({ error: "Repair case not found." }, { status: 404 });
-        return NextResponse.json({ data: { request: adminRequest, checks: [], diagnoses: [], quote: null } });
+        const evidence = adminRequest.investigationId ? await Evidence.find({ investigationId: adminRequest.investigationId }).lean() : [];
+        return NextResponse.json({ data: { request: adminRequest, checks: [], diagnoses: [], quote: null, evidence } });
       }
       return NextResponse.json({ error: "Repair case not found." }, { status: 404 });
     }
 
-    const [checks, diagnoses, quote] = await Promise.all([
+    const [checks, diagnoses, quote, evidence] = await Promise.all([
       DiagnosticCheck.find({ repairRequestId: id }).lean(),
       Diagnosis.find({ repairRequestId: id }).lean(),
-      Quote.findOne({ repairRequestId: id }).sort({ createdAt: -1 }).lean()
+      Quote.findOne({ repairRequestId: id }).sort({ createdAt: -1 }).lean(),
+      requestRecord.investigationId?._id ? Evidence.find({ investigationId: requestRecord.investigationId._id }).lean() : []
     ]);
 
-    return NextResponse.json({ data: { request: requestRecord, checks, diagnoses, quote } });
+    return NextResponse.json({ data: { request: requestRecord, checks, diagnoses, quote, evidence } });
   } catch (error) {
     return NextResponse.json({ error: error.message || "Repair case is temporarily unavailable." }, { status: error.code === "UNAUTHORIZED" ? 401 : 500 });
   }
